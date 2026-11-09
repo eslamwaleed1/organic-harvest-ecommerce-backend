@@ -16,7 +16,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 const app = express();
 app.use(
 	cors({
-		origin: "http://localhost:5173",
+		origin: "https://organic-harvest-ecommerce-frontend.vercel.app/",
 		credentials: true,
 	}),
 )
@@ -24,7 +24,7 @@ connectToMongoDB().catch((error) => {
 	console.error("MongoDB startup error:", error);
 });
 
-// const allowedOrigins = ["http://localhost:5173"];
+// const allowedOrigins = ["http://localhost:5173", "https://organic-harvest-ecommerce-frontend.vercel.app/"];
 
 app.set("trust proxy", 1);
 // app.use(
