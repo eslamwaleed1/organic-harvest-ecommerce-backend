@@ -1,4 +1,4 @@
-import { userDAO } from "../daos/userDAO.js";
+import { userDAO } from "../daos/UserDAO.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
