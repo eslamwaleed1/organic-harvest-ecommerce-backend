@@ -16,7 +16,10 @@ import adminRoutes from "./routes/adminRoutes.js";
 const app = express();
 app.use(
 	cors({
-		origin: "https://organic-harvest-ecommerce-frontend.vercel.app/",
+		origin: [
+			"https://organic-harvest-ecommerce-frontend.vercel.app",
+			"http://localhost:5173",
+		],
 		credentials: true,
 	}),
 )
