@@ -7,6 +7,8 @@ import {
 	sendPasswordResetEmail,
 } from "../utils/emailSender.js";
 
+const cookieSameSite = process.env.NODE_ENV === "production" ? "none" : "strict";
+
 class UserController {
 	async signup(req, res) {
 		try {
@@ -45,7 +47,7 @@ class UserController {
 			res.cookie("signup_token", token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 
@@ -83,7 +85,7 @@ class UserController {
 			res.cookie("signup_token", token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 			return res.status(200).json({message: "Email sent successfully"})
@@ -143,7 +145,7 @@ class UserController {
 				res.cookie("signup_token", token, {
 					httpOnly: true,
 					secure: process.env.NODE_ENV === "production",
-					sameSite: "strict",
+					sameSite: cookieSameSite,
 					maxAge: 3600000,
 				});
 				return res.status(200).json({
@@ -162,13 +164,13 @@ class UserController {
 			res.cookie("auth_token", token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 
 			res.cookie("is_logged_in", "true", {
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 
@@ -182,7 +184,7 @@ class UserController {
 				}),
 				{
 					secure: process.env.NODE_ENV === "production",
-					sameSite: "strict",
+					sameSite: cookieSameSite,
 					maxAge: 3600000,
 				},
 			);
@@ -321,13 +323,13 @@ class UserController {
 			res.cookie("auth_token", token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 
 			res.cookie("is_logged_in", "true", {
 				secure: process.env.NODE_ENV === "production",
-				sameSite: "strict",
+				sameSite: cookieSameSite,
 				maxAge: 3600000,
 			});
 
@@ -341,7 +343,7 @@ class UserController {
 				}),
 				{
 					secure: process.env.NODE_ENV === "production",
-					sameSite: "strict",
+					sameSite: cookieSameSite,
 					maxAge: 3600000,
 				},
 			);
