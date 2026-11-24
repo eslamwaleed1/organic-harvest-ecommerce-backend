@@ -25,6 +25,7 @@ class PaymentService {
 			error.statusCode = 503;
 			throw error;
 		}
+		const frontendUrl = process.env.FRONTEND_URL.replace(/\/+$/, "");
 		if (!validateId(userId)) {
 			const error = new Error("Invalid user");
 			error.statusCode = 401;
@@ -150,10 +151,10 @@ class PaymentService {
 				line_items: lineItems,
 
 				success_url:
-					`${process.env.FRONTEND_URL}/payment/success` +
+					`${frontendUrl}/payment/success` +
 					"?session_id={CHECKOUT_SESSION_ID}",
 
-				cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+				cancel_url: `${frontendUrl}/payment/cancel`,
 
 				client_reference_id: order._id.toString(),
 
