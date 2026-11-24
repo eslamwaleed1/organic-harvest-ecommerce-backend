@@ -74,6 +74,15 @@ class OrderDAO {
 		);
 	}
 
+	async deletePendingByStripeSessionId(sessionId, userId) {
+		const filter = {
+			stripeCheckoutSessionId: sessionId,
+			status: "pending",
+		};
+		if (userId) filter.userId = userId;
+		return Order.findOneAndDelete(filter);
+	}
+
 	async findBySessionIdForUser(sessionId, userId) {
 		return Order.findOne({
 			stripeCheckoutSessionId: sessionId,

@@ -141,6 +141,10 @@ class OrderService {
 		return await orderDAO.markCancelledByStripeSessionId(sessionId);
 	}
 
+	async deletePendingByStripeSessionId(sessionId, userId) {
+		return await orderDAO.deletePendingByStripeSessionId(sessionId, userId);
+	}
+
 	async deleteOrder(orderId) {
 		if (!validateId(orderId)) {
 			throw validationError("A valid order ID is required.");

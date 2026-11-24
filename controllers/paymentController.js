@@ -67,12 +67,15 @@ class PaymentController {
 				event.type === "checkout.session.async_payment_succeeded"
 			) {
 				if (session.payment_status === "paid") {
-						await orderService.markPaidByStripeSessionId(session.id);
-					}
+					await orderService.markPaidByStripeSessionId(session.id);
+				}
 			}
 
-			if (event.type === "checkout.session.expired") {
-				await orderService.markCancelledByStripeSessionId(session.id);
+			if (
+				event.type === "checkout.session.expired" ||
+				event.type === "checkout.session.async_payment_failed"
+			) {
+				await orderService.deletePendingByStripeSessionId(session.id);
 			}
 
 			return res.status(200).json({ received: true });
@@ -97,6 +100,38 @@ class PaymentController {
 			}
 
 			const data = await paymentService.getCheckoutOrderStatus({
+				sessionId: req.params.sessionId,
+				userId,
+			});
+
+			return res.status(200).json({
+				success: true,
+				data,
+			});
+		} catch (error) {
+			if (error.statusCode) {
+				return res.status(error.statusCode).json({
+					success: false,
+					message: error.message,
+				});
+			}
+
+			next(error);
+		}
+	}
+
+	async finalizeCheckoutSession(req, res, next) {
+		try {
+			const userId = req.user?.id ?? req.user?._id;
+
+			if (!userId) {
+				return res.status(401).json({
+					success: false,
+					message: "Please log in to view your order",
+				});
+			}
+
+			const data = await paymentService.finalizeCheckoutSession({
 				sessionId: req.params.sessionId,
 				userId,
 			});

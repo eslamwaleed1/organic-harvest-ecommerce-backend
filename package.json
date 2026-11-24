@@ -9,7 +9,7 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "node server.js",
 		"dev": "nodemon server.js",
-		"stripe:listen": "stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.expired --forward-to localhost:5000/api/payments/webhook",
+		"stripe:listen": "stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired --forward-to localhost:5000/api/payments/webhook",
 		"devStart": "concurrently -n SERVER,STRIPE \"npm run dev\" \"npm run stripe:listen\""
 	},
 	"dependencies": {

@@ -14,5 +14,10 @@ router.get(
     authenticateAuthToken,
     paymentController.getCheckoutOrderStatus
 );
+router.post(
+	"/session/:sessionId/finalize",
+	authenticateAuthToken,
+	paymentController.finalizeCheckoutSession,
+);
 
 export default router;

@@ -1,7 +1,6 @@
 import Stripe from "stripe";
 import { validateId } from "../daos/helperDAO.js";
 import orderDAO from "../daos/OrderDAO.js";
-import orderService from "../services/orderService.js";
 import productDAO from "../daos/ProductDAO.js";
 
 let stripeClient;
@@ -11,6 +10,24 @@ export const getStripeClient = () => {
 	if (!stripeClient) stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
 	return stripeClient;
 };
+
+function validateCheckoutSessionId(sessionId) {
+	if (typeof sessionId !== "string" || !/^cs_(test|live)_/.test(sessionId)) {
+		const error = new Error("Invalid checkout session ID");
+		error.statusCode = 400;
+		throw error;
+	}
+}
+
+function getOrderStatus(order, status = order.status) {
+	return {
+		orderId: order._id,
+		status,
+		amountTotal: order.totalAmount,
+		currency: order.currency,
+		createdAt: order.createdAt,
+	};
+}
 
 class PaymentService {
 	async createCheckoutSession({ userId, cartItems }) {
@@ -142,8 +159,6 @@ class PaymentService {
 			quantity: item.quantity,
 		}));
 
-		//console.dir(lineItems, { depth: null });
-
 		try {
 			const session = await stripe.checkout.sessions.create({
 				mode: "payment",
@@ -176,13 +191,9 @@ class PaymentService {
 	}
 
 	async getCheckoutOrderStatus({ sessionId, userId }) {
-		if (typeof sessionId !== "string" || !/^cs_(test|live)_/.test(sessionId)) {
-			const error = new Error("Invalid checkout session ID");
-			error.statusCode = 400;
-			throw error;
-		}
+		validateCheckoutSessionId(sessionId);
 
-		const order = await orderDAO.findBySessionIdForUser(sessionId, userId);
+		let order = await orderDAO.findBySessionIdForUser(sessionId, userId);
 
 		if (!order) {
 			// Don't reveal whether another user's order exists.
@@ -191,13 +202,102 @@ class PaymentService {
 			throw error;
 		}
 
-		return {
-			orderId: order._id,
-			status: order.status,
-			amountTotal: order.totalAmount,
-			currency: order.currency,
-			createdAt: order.createdAt,
-		};
+		if (order.status === "pending") {
+			const stripe = getStripeClient();
+			if (!stripe) {
+				const error = new Error("Stripe payments are not configured");
+				error.statusCode = 503;
+				throw error;
+			}
+
+			const session = await stripe.checkout.sessions.retrieve(sessionId);
+			if (session.payment_status === "paid") {
+				order =
+					(await orderDAO.markPaidByStripeSessionId(sessionId)) ??
+					(await orderDAO.findBySessionIdForUser(sessionId, userId)) ??
+					order;
+			}
+		}
+
+		return getOrderStatus(order);
+	}
+
+	async finalizeCheckoutSession({ sessionId, userId }) {
+		validateCheckoutSessionId(sessionId);
+
+		const stripe = getStripeClient();
+		if (!stripe) {
+			const error = new Error("Stripe payments are not configured");
+			error.statusCode = 503;
+			throw error;
+		}
+
+		let order = await orderDAO.findBySessionIdForUser(sessionId, userId);
+		if (!order) {
+			const error = new Error("Order not found");
+			error.statusCode = 404;
+			throw error;
+		}
+		if (order.status !== "pending") return getOrderStatus(order);
+
+		let session = await stripe.checkout.sessions.retrieve(sessionId);
+		if (session.payment_status === "paid") {
+			order =
+				(await orderDAO.markPaidByStripeSessionId(sessionId)) ??
+				(await orderDAO.findBySessionIdForUser(sessionId, userId)) ??
+				order;
+			return getOrderStatus(order);
+		}
+
+		if (session.status === "open") {
+			session = await stripe.checkout.sessions.expire(sessionId);
+		}
+
+		if (session.payment_status === "paid") {
+			order =
+				(await orderDAO.markPaidByStripeSessionId(sessionId)) ??
+				(await orderDAO.findBySessionIdForUser(sessionId, userId)) ??
+				order;
+			return getOrderStatus(order);
+		}
+
+		let paymentIntent;
+		if (session.payment_intent) {
+			const paymentIntentId =
+				typeof session.payment_intent === "string"
+					? session.payment_intent
+					: session.payment_intent.id;
+			paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+			if (paymentIntent.status === "succeeded") {
+				order =
+					(await orderDAO.markPaidByStripeSessionId(sessionId)) ??
+					(await orderDAO.findBySessionIdForUser(sessionId, userId)) ??
+					order;
+				return getOrderStatus(order);
+			}
+		}
+
+		const paymentFailed =
+			paymentIntent?.status === "canceled" ||
+			paymentIntent?.status === "requires_payment_method";
+		if (session.status === "expired" && (!paymentIntent || paymentFailed)) {
+			const deletedOrder = await orderDAO.deletePendingByStripeSessionId(
+				sessionId,
+				userId,
+			);
+			if (deletedOrder) return getOrderStatus(deletedOrder, "failed");
+
+			const currentOrder = await orderDAO.findBySessionIdForUser(
+				sessionId,
+				userId,
+			);
+			return currentOrder
+				? getOrderStatus(currentOrder)
+				: getOrderStatus(order, "failed");
+		}
+
+		return getOrderStatus(order);
 	}
 }
 
